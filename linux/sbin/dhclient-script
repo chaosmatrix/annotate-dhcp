@@ -211,6 +211,23 @@ if [ -z "$new_interface_mtu" ] || [ "$new_interface_mtu" -le 576 ]; then
     new_interface_mtu=''
 fi
 
+# Modified to avoid some problems with TCP traffic cause by TCP MSS
+# in some situation, aka gre tunnel.
+# Update mtu when dhcp client in RENEW operation
+# and $current_interface_mtu smaller than $new_interface_mtu.
+set_mtu(){
+    # get current_interface_mtu
+    current_interface_mtu=$(ip link show ${interface} \
+        | grep "state UP" \
+        | awk -F ' mtu ' '{print $2}' \
+        | awk '{print $1}')
+    # current_interface_mtu must be integer
+    (echo "$current_interface_mtu" | grep -qEo "^[0-9]{3,5}$") || return 0
+    if [ -n "$new_interface_mtu" ] && [ "$current_interface_mtu" -gt "$new_interface_mtu" ]; then
+        # set MTU
+        ip link set dev ${interface} mtu ${new_interface_mtu}
+    fi
+}
 
 # The action starts here
 
@@ -303,6 +320,11 @@ case "$reason" in
             ip -4 addr add ${alias_ip_address}${alias_subnet_mask:+/$alias_subnet_mask} \
                 dev ${interface} label ${interface}:0
             ip -4 route add ${alias_ip_address} dev ${interface} >/dev/null 2>&1
+        fi
+
+        # update mtu in RENEW operation
+        if [ "X${reason}" = "XRENEW" ]; then
+            set_mtu
         fi
 
         # update /etc/resolv.conf
