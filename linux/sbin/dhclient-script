@@ -214,7 +214,7 @@ fi
 # Modified to avoid some problems with TCP traffic cause by TCP MSS
 # in some situation, aka gre tunnel.
 # Update mtu when dhcp client in RENEW operation
-# and $current_interface_mtu smaller than $new_interface_mtu.
+# and $current_interface_mtu larger than $new_interface_mtu.
 set_mtu(){
     # get current_interface_mtu
     current_interface_mtu=$(ip link show ${interface} \
